@@ -1,4 +1,3 @@
-/*
 package com.fse.taskmanager.service;
 
 import com.fse.taskmanager.entity.ParentTask;
@@ -14,6 +13,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.mongodb.core.MongoOperations;
+import org.springframework.data.mongodb.core.query.Query;
 
 import java.util.Arrays;
 import java.util.List;
@@ -23,7 +24,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
@@ -40,15 +40,18 @@ public class TaskManagerServiceTest {
     private TasksRepository tasksRepository;
     @Mock
     private Task taskData;
+    @Mock
+    private MongoOperations mongoOperation;
 
     private Task task;
     private TaskData taskDataResult;
     private ParentTask parentTask;
+    private TaskDetail detail;
 
     @BeforeEach
     void setUp() {
         task = Task.builder()
-                .taskId(1)
+                .taskId("10")
                 .taskName("task")
                 .parentTask(ParentTask.builder().task("parent").build())
                 .priority(10)
@@ -63,8 +66,16 @@ public class TaskManagerServiceTest {
                 .endDate("30/04/2019")
                 .build();
         parentTask = ParentTask.builder()
-                .id(1)
+                .id("10")
                 .task("task")
+                .build();
+        detail = TaskDetail.builder()
+                .task("task")
+                .parentTask("parent")
+                .priorityFrom(10)
+                .priorityTo(20)
+                .startDate("20/03/2019")
+                .endDate("30/04/2019")
                 .build();
     }
 
@@ -73,7 +84,7 @@ public class TaskManagerServiceTest {
         when(tasksRepository.findByTaskName(taskDetail.getTask())).thenReturn(Optional.empty());
         when(tasksRepository.save(any(Task.class))).thenReturn(task);
         Task task = taskManagerService.addTaskDetails(taskDetail);
-        assertThat(task.getTaskId()).isEqualTo(1);
+        assertThat(task.getTaskId()).isEqualTo("10");
         assertThat(task.getTaskName()).isEqualTo("task");
         assertThat(task.getParentTask().getTask()).isEqualTo("parent");
         assertThat(task.getPriority()).isEqualTo(10);
@@ -83,18 +94,18 @@ public class TaskManagerServiceTest {
 
     @Test
     void testModifyTaskDetails() {
-        when(tasksRepository.findById(anyInt())).thenReturn(Optional.of(task));
+        when(tasksRepository.findById(anyString())).thenReturn(Optional.of(task));
         when(tasksRepository.save(any(Task.class))).thenReturn(task);
-        Task task = taskManagerService.modifyTaskDetails(anyInt(), taskDetail);
+        Task task = taskManagerService.modifyTaskDetails(anyString(), taskDetail);
         assertNotNull(task);
-        assertThat(task.getTaskId()).isEqualTo(1);
+        assertThat(task.getTaskId()).isEqualTo("10");
     }
 
     @Test
     void testDeleteTaskDetails() {
         when(tasksRepository.findByTaskName(anyString())).thenReturn(Optional.of(task));
         Task task = taskManagerService.deleteTask(anyString());
-        assertThat(task.getTaskId()).isEqualTo(1);
+        assertThat(task.getTaskId()).isEqualTo("10");
         assertThat(task.getTaskName()).isEqualTo("task");
         assertThat(task.getParentTask().getTask()).isEqualTo("parent");
         assertThat(task.getPriority()).isEqualTo(10);
@@ -117,14 +128,15 @@ public class TaskManagerServiceTest {
     }
 
     @Test
-    void testFindTaskDetailsByParentTaskName() {
-        when(parentTasksRepository.findByTask(anyString())).thenReturn(Optional.of(parentTask));
-        when(tasksRepository.findByParentTaskId(anyInt())).thenReturn(Arrays.asList(task));
-        List<Task> taskDatas = taskManagerService.findTaskDetailsByParentTaskName(anyString());
+    void testFindTaskDetails() {
+        when(parentTasksRepository.findByTask(detail.getParentTask())).thenReturn(Arrays.asList(parentTask));
+        when(mongoOperation.find(any(Query.class), any())).thenReturn(Arrays.asList(task));
+
+        List<TaskData> taskDatas = taskManagerService.findTaskDetails(detail);
         assertThat(taskDatas.size()).isEqualTo(1);
         taskDatas.stream().forEach(taskData -> {
-            assertTrue(taskData.getTaskName().equals(taskDataResult.getTask()));
-            assertTrue(taskData.getParentTask().getTask().equals(taskDataResult.getParentTask()));
+            assertTrue(taskData.getTask().equals(taskDataResult.getTask()));
+            assertTrue(taskData.getParentTask().equals(taskDataResult.getParentTask()));
             assertTrue(taskData.getPriority().equals(taskDataResult.getPriority()));
             assertTrue(taskData.getStartDate().equals(taskDataResult.getStartDate()));
             assertTrue(taskData.getEndDate().equals(taskDataResult.getEndDate()));
@@ -150,4 +162,4 @@ public class TaskManagerServiceTest {
             assertThat(exp).hasMessage("Task name does not exists.");
         }
     }
-}*/
+}
